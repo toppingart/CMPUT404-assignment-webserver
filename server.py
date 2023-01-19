@@ -29,10 +29,34 @@ import socketserver
 
 class MyWebServer(socketserver.BaseRequestHandler):
     
+    # how it communicates with the client
     def handle(self):
-        self.data = self.request.recv(1024).strip()
-        print ("Got a request of: %s\n" % self.data)
-        self.request.sendall(bytearray("OK",'utf-8'))
+        
+        try:
+            # what it receives from the client
+            self.data = self.request.recv(1024).strip()
+            print ("Got a request of: %s\n" % self.data)
+
+            # finding a way to get the file path (can just split it)
+            # https://stackoverflow.com/questions/55895197/python-socket-programming-simple-web-server-trying-to-access-a-html-file-from-s
+            methodUsed = self.data.split()[0]
+            filePath = self.data.split()[1]
+
+            file = open(filePath[1:])
+            result = file.read()
+            file.close()
+
+            # did the server succeed in processing the request - send the status code
+            if methodUsed.decode().strip() != "GET":
+                self.request.send(b'HTTP/1.1 405 Method Not Allowed\r\n\r\n')
+            else:
+                self.request.send(b'HTTP/1.1 200 OK\r\n\r\n')
+       
+            self.request.sendall(result.encode())
+            #  self.request.sendall(bytearray("OK",'utf-8'))
+        except:
+            self.request.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
+
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
