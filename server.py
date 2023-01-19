@@ -1,6 +1,6 @@
 #  coding: utf-8 
 import socketserver
-from pathlib import Path
+
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos, Elena Xu
 # 
@@ -42,11 +42,11 @@ class MyWebServer(socketserver.BaseRequestHandler):
             # https://stackoverflow.com/questions/55895197/python-socket-programming-simple-web-server-trying-to-access-a-html-file-from-s
             methodUsed = self.data.split()[0]
             filePath = self.data.split()[1]
-            testingFilePath = Path(filePath.decode)
-            
+
             file = open(filePath[1:])
             result = file.read()
             file.close()
+            print(filePath)
 
             # did the server succeed in processing the request - send the status code
             if methodUsed.decode().strip() != "GET":
@@ -54,8 +54,16 @@ class MyWebServer(socketserver.BaseRequestHandler):
             else:
                 self.request.send(b'HTTP/1.1 200 OK\r\n\r\n')
        
-            self.request.sendall(result.encode())
+            self.request.sendall(result.encode('utf-8'))
             #  self.request.sendall(bytearray("OK",'utf-8'))
+        except IsADirectoryError as e:
+            if filePath.decode().endswith("/"):
+                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + 'index.html' 
+            else:
+                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + '/index.html' 
+
+            self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\n\n")
+            
         except Exception as e:
             print(e)
             self.request.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
