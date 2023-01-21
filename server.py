@@ -1,5 +1,6 @@
 #  coding: utf-8 
 import socketserver
+import os
 
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos, Elena Xu
@@ -37,16 +38,21 @@ class MyWebServer(socketserver.BaseRequestHandler):
             # what it receives from the client
             self.data = self.request.recv(1024).strip()
             print ("Got a request of: %s\n" % self.data)
+           
 
             # finding a way to get the file path (can just split it)
             # https://stackoverflow.com/questions/55895197/python-socket-programming-simple-web-server-trying-to-access-a-html-file-from-s
             methodUsed = self.data.split()[0]
             filePath = self.data.split()[1]
+            print(self.data)
+            print("FILEPATH", filePath)
 
-            file = open(filePath[1:])
+            modifiedFilePath = os.path.realpath('./www/' + filePath[1:].decode())
+            file = open(modifiedFilePath.encode())
             result = file.read()
             file.close()
-            print(filePath)
+         
+
 
             # did the server succeed in processing the request - send the status code
             if methodUsed.decode().strip() != "GET":
@@ -55,15 +61,26 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 self.request.send(b'HTTP/1.1 200 OK\r\n\r\n')
        
             self.request.sendall(result.encode('utf-8'))
+
+     
+
             #  self.request.sendall(bytearray("OK",'utf-8'))
         except IsADirectoryError as e:
-            if filePath.decode().endswith("/"):
-                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + 'index.html' 
-            else:
-                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + '/index.html' 
+            #print(e)
+            path1 = './www'
+            path2 = os.path.realpath('./www/' + filePath[1:].decode())
+            print("PATH2", "this:"+filePath[1:].decode(), "2:", path2)
+     
 
-            self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\n\n")
-            
+            if filePath.decode().endswith("/") and 'www' in path2:
+                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + 'index.html' 
+                self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\n\n")
+            elif 'www' in path2:
+                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + '/index.html' 
+                self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\n\n")
+            if 'www' not in path2:
+                #raise Exception
+                self.request.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
         except Exception as e:
             print(e)
             self.request.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
