@@ -38,54 +38,73 @@ class MyWebServer(socketserver.BaseRequestHandler):
             # what it receives from the client
             self.data = self.request.recv(1024).strip()
             print ("Got a request of: %s\n" % self.data)
-           
 
-            # finding a way to get the file path (can just split it)
-            # https://stackoverflow.com/questions/55895197/python-socket-programming-simple-web-server-trying-to-access-a-html-file-from-s
-            methodUsed = self.data.split()[0]
+            # finding a way to get the file path (can split it up)
+            # REFERENCE: https://stackoverflow.com/questions/55895197/python-socket-programming-simple-web-server-trying-to-access-a-html-file-from-s
+            methodUsed = self.data.split()[0] # e.g. GET
             filePath = self.data.split()[1]
-   
-            print("FILEPATH", filePath)
 
-            modifiedFilePath = os.path.realpath('./www/' + filePath[1:].decode())
+            # add the www directory at the beginning of the file path and open up the file
+            modifiedFilePath = os.path.realpath('./www/' + filePath[1:].decode()) 
             file = open(modifiedFilePath.encode())
             result = file.read()
             file.close()
-         
+
+            # get the extension of the file (e.g. basename --> index.html)
             fileName = os.path.basename(modifiedFilePath)
             fileExtension = fileName.split('.')[1]
 
-            # did the server succeed in processing the request - send the status code
+           
+            # is it a GET method?
             if methodUsed.decode().strip() != "GET":
                 self.request.send(b'HTTP/1.1 405 Method Not Allowed\r\n\r\n')
-            else:
-                self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode()+ b"\n\n")
        
-            self.request.sendall(result.encode('utf-8'))
-
-     
-
-            #  self.request.sendall(bytearray("OK",'utf-8'))
         except IsADirectoryError as e:
-            print(e)
-            print(filePath[1:].decode())
-            path1 = './www'
-            path2 = os.path.realpath('./www/' + filePath[1:].decode())
-           
+            # we entered a directory but did not specify a file, default: use index.html
+     
+            if filePath.endswith(b"/"):
 
-            if filePath.decode().endswith("/") and 'www' in path2:
+                # directly add index.html at the end
                 changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + 'index.html' 
+
+                modifiedFilePath = os.path.realpath('./www/' + filePath.decode() + 'index.html') 
+                file = open(modifiedFilePath.encode())
+                result = file.read()
+                file.close()
+
+                # add 301 status code and redirected location
                 self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\n\n")
-            elif not filePath.decode().endswith("/") and 'www' in path2:
-                print("WENT HERE")
+
+                # send the contents of the file (e.g. html file, css file)
+                self.request.sendall(result.encode('utf-8'))
+
+
+            elif not filePath.endswith(b"/"):
+                print("HERE")
                 changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + '/index.html' 
                 self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\n\n")
-            if 'www' not in path2:
-                #raise Exception
+
+                modifiedFilePath = os.path.realpath('./www/' + filePath.decode() + '/index.html') 
+                file = open(modifiedFilePath.encode())
+                result = file.read()
+                file.close()
+
+                # send the contents of the file (e.g. html file, css file)
+                self.request.sendall(result.encode('utf-8'))
+
+            # in case of any other issues - return 404 Not Found
+            else: 
                 self.request.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
+
         except Exception as e:
-            print(e)
+            # For any other errors return 404 Not Found
             self.request.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
+        else:
+         
+            self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode()+ b"\n\n")
+            # send the contents of the file (e.g. html file, css file)
+            self.request.sendall(result.encode('utf-8'))
+
 
 
 if __name__ == "__main__":
