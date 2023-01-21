@@ -44,7 +44,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
             # https://stackoverflow.com/questions/55895197/python-socket-programming-simple-web-server-trying-to-access-a-html-file-from-s
             methodUsed = self.data.split()[0]
             filePath = self.data.split()[1]
-            print(self.data)
+   
             print("FILEPATH", filePath)
 
             modifiedFilePath = os.path.realpath('./www/' + filePath[1:].decode())
@@ -52,13 +52,14 @@ class MyWebServer(socketserver.BaseRequestHandler):
             result = file.read()
             file.close()
          
-
+            fileName = os.path.basename(modifiedFilePath)
+            fileExtension = fileName.split('.')[1]
 
             # did the server succeed in processing the request - send the status code
             if methodUsed.decode().strip() != "GET":
                 self.request.send(b'HTTP/1.1 405 Method Not Allowed\r\n\r\n')
             else:
-                self.request.send(b'HTTP/1.1 200 OK\r\n\r\n')
+                self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode()+ b"\n\n")
        
             self.request.sendall(result.encode('utf-8'))
 
@@ -66,16 +67,17 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
             #  self.request.sendall(bytearray("OK",'utf-8'))
         except IsADirectoryError as e:
-            #print(e)
+            print(e)
+            print(filePath[1:].decode())
             path1 = './www'
             path2 = os.path.realpath('./www/' + filePath[1:].decode())
-            print("PATH2", "this:"+filePath[1:].decode(), "2:", path2)
-     
+           
 
             if filePath.decode().endswith("/") and 'www' in path2:
                 changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + 'index.html' 
                 self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\n\n")
-            elif 'www' in path2:
+            elif not filePath.decode().endswith("/") and 'www' in path2:
+                print("WENT HERE")
                 changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + '/index.html' 
                 self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\n\n")
             if 'www' not in path2:
