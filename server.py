@@ -39,35 +39,38 @@ class MyWebServer(socketserver.BaseRequestHandler):
             self.data = self.request.recv(1024).strip()
             print ("Got a request of: %s\n" % self.data)
 
-            # finding a way to get the file path (can split it up)
-            # REFERENCE: https://stackoverflow.com/questions/55895197/python-socket-programming-simple-web-server-trying-to-access-a-html-file-from-s
+            # The idea of finding the file path through splitting the file up was found through Shane Gurusingha's 
+            # implementation of their own web server (using the socket module), licensed under 
+            # Creative Commons-Attribution-ShareAlike 4.0 (CC-BY-SA 4.0)
+            # Link to site where implementation was found: https://stackoverflow.com/questions/55895197/python-socket-programming-simple-web-server-trying-to-access-a-html-file-from-s
+            # Link to author (in this case, the person who asked the question): https://stackoverflow.com/users/11423619/shane-gurusingha
+            # Link to license: https://creativecommons.org/licenses/by-sa/4.0/
+
             methodUsed = self.data.split()[0] # e.g. GET
             filePath = self.data.split()[1]
 
+
             # add the www directory at the beginning of the file path and open up the file
             modifiedFilePath = os.path.realpath('./www/' + filePath.decode()) 
-            file = open(modifiedFilePath.encode())
+
+            # the user has went outside of the www directory
+            if 'www/' not in modifiedFilePath and '/www' not in modifiedFilePath:
+                raise Exception
+
+            file = open(modifiedFilePath.encode()) # may raise an error
             result = file.read()
             file.close()
 
-            # get the extension of the file (e.g. basename --> index.html)
-            fileName = os.path.basename(modifiedFilePath)
-            fileExtension = fileName.split('.')[1]
-
-           
             # is it a GET method?
             if methodUsed.decode().strip() != "GET":
                 self.request.send(b'HTTP/1.1 405 Method Not Allowed\r\n\r\n')
        
         except IsADirectoryError as e:
-            # we entered a directory but did not specify a file, default: use index.html
+            # we entered a directory (either with or without /) but did not specify a file, default: use index.html
      
             if filePath.endswith(b"/"):
 
-                # directly add index.html at the end
-                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() 
-
-                # open up the appropriate file
+                # open up the appropriate file from the www directory (index.html)
                 modifiedFilePath = os.path.realpath('./www/' + filePath.decode() + 'index.html') 
                 file = open(modifiedFilePath.encode())
                 result = file.read()
@@ -78,15 +81,14 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 fileExtension = fileName.split('.')[1]
 
                 self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode()+ b"\n\n")
+                
                 # send the contents of the file (e.g. html file, css file)
                 self.request.sendall(result.encode('utf-8'))
-
-
 
             elif not filePath.endswith(b"/"):
                 
                 # we need to add a / at the end
-                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + '/'
+                changedFilePath = filePath.decode() + '/'
                 self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\n\n")
 
                 modifiedFilePath = os.path.realpath('./www/' + filePath.decode() + '/index.html') 
@@ -97,15 +99,19 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 # send the contents of the file (e.g. html file, css file)
                 self.request.sendall(result.encode('utf-8'))
 
-            # in case of any other issues - return 404 Not Found
+            # in case of any other issues (e.g. file not found inside the directory) - return 404 Not Found
             else: 
                 self.request.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
 
         except Exception as e:
-            # For any other errors return 404 Not Found
+            # For any other errors (e.g. file or directory does not exist), return 404 Not Found
             self.request.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
+        
         else:
-         
+            # get the extension of the file (e.g. basename --> index.html)
+            fileName = os.path.basename(modifiedFilePath)
+            fileExtension = fileName.split('.')[1]
+
             self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode()+ b"\n\n")
             # send the contents of the file (e.g. html file, css file)
             self.request.sendall(result.encode('utf-8'))
@@ -113,8 +119,8 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
 
 if __name__ == "__main__":
-    HOST, PORT = "127.0.0.1", 8080 # localhost
-
+    HOST, PORT = "localhost", 8080 
+    
     socketserver.TCPServer.allow_reuse_address = True
     # Create the server, binding to localhost on port 8080
     server = socketserver.TCPServer((HOST, PORT), MyWebServer)
