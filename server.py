@@ -41,7 +41,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
             # The idea of finding the file path through splitting the file up was found through Shane Gurusingha's 
             # implementation of their own web server (using the socket module), licensed under 
-            # Creative Commons-Attribution-ShareAlike 4.0 (CC-BY-SA 4.0)
+            # Creative Commons-Attribution-ShareAlike 4.0 (CC-BY-SA 4.0), found on Stack Overflow
             # Link to site where implementation was found: https://stackoverflow.com/questions/55895197/python-socket-programming-simple-web-server-trying-to-access-a-html-file-from-s
             # Link to author (in this case, the person who asked the question): https://stackoverflow.com/users/11423619/shane-gurusingha
             # Link to license: https://creativecommons.org/licenses/by-sa/4.0/
