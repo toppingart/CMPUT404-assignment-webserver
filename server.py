@@ -45,7 +45,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
             filePath = self.data.split()[1]
 
             # add the www directory at the beginning of the file path and open up the file
-            modifiedFilePath = os.path.realpath('./www/' + filePath[1:].decode()) 
+            modifiedFilePath = os.path.realpath('./www/' + filePath.decode()) 
             file = open(modifiedFilePath.encode())
             result = file.read()
             file.close()
@@ -65,23 +65,28 @@ class MyWebServer(socketserver.BaseRequestHandler):
             if filePath.endswith(b"/"):
 
                 # directly add index.html at the end
-                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + 'index.html' 
+                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() 
 
+                # open up the appropriate file
                 modifiedFilePath = os.path.realpath('./www/' + filePath.decode() + 'index.html') 
                 file = open(modifiedFilePath.encode())
                 result = file.read()
                 file.close()
 
-                # add 301 status code and redirected location
-                self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\n\n")
+                # get the extension of the file (e.g. basename --> index.html)
+                fileName = os.path.basename(modifiedFilePath)
+                fileExtension = fileName.split('.')[1]
 
+                self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode()+ b"\n\n")
                 # send the contents of the file (e.g. html file, css file)
                 self.request.sendall(result.encode('utf-8'))
 
 
+
             elif not filePath.endswith(b"/"):
-                print("HERE")
-                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + '/index.html' 
+                
+                # we need to add a / at the end
+                changedFilePath = f'http://{HOST}:{PORT}' + filePath.decode() + '/'
                 self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\n\n")
 
                 modifiedFilePath = os.path.realpath('./www/' + filePath.decode() + '/index.html') 
@@ -108,7 +113,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 8080
+    HOST, PORT = "127.0.0.1", 8080 # localhost
 
     socketserver.TCPServer.allow_reuse_address = True
     # Create the server, binding to localhost on port 8080
