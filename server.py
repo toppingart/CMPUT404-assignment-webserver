@@ -45,9 +45,10 @@ class MyWebServer(socketserver.BaseRequestHandler):
             # Link to site where implementation was found: https://stackoverflow.com/questions/55895197/python-socket-programming-simple-web-server-trying-to-access-a-html-file-from-s
             # Link to author (in this case, the person who asked the question): https://stackoverflow.com/users/11423619/shane-gurusingha
             # Link to license: https://creativecommons.org/licenses/by-sa/4.0/
-
+            
             methodUsed = self.data.split()[0] # e.g. GET
             filePath = self.data.split()[1]
+       
 
             # is it a GET method?
             if methodUsed.decode().strip() != "GET":
@@ -57,6 +58,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
             modifiedFilePath = os.path.realpath('./www/' + filePath.decode()) 
 
             # the user has went outside of the www directory
+            # /www indicates that the user is in the www directory
             if 'www/' not in modifiedFilePath and '/www' not in modifiedFilePath:
                 raise Exception
 
@@ -106,6 +108,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
             methodUsed = self.data.split()[0] 
             if methodUsed.decode().strip() != "GET":
+                print(methodUsed)
                 self.request.send(b'HTTP/1.1 405 Method Not Allowed\r\n\r\n')
 
             else:
@@ -115,9 +118,13 @@ class MyWebServer(socketserver.BaseRequestHandler):
         else:
             # get the extension of the file (e.g. basename --> index.html)
             fileName = os.path.basename(modifiedFilePath)
-            fileExtension = fileName.split('.')[1]
-
-            self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode()+ b"\n\n")
+            splitFile = fileName.split('.')
+            if len(splitFile) < 2 or (splitFile[-1] not in ['html', 'css']): # no file extension or it's a non-HTML or non-CSS file
+                self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/plain; charset=utf-8').encode()+ b"\n\n")
+            else:
+                fileExtension = splitFile[-1]
+                self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode()+ b"\n\n")
+            
             # send the contents of the file (e.g. html file, css file)
             self.request.sendall(result.encode('utf-8'))
 
