@@ -3,7 +3,7 @@ import socketserver
 import os
 
 
-# Copyright 2013 Abram Hindle, Eddie Antonio Santos, Elena Xu
+# Copyright 2023 Abram Hindle, Eddie Antonio Santos, Elena Xu
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -109,7 +109,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
             methodUsed = self.data.split()[0] 
             if methodUsed.decode().strip() != "GET":
                 print(methodUsed)
-                self.request.send(b'HTTP/1.1 405 Method Not Allowed\r\n\r\n')
+                self.request.send(b'HTTP/1.1 405 Method Not Allowed' + b'\nConnection: close' + b'\n\n')
 
             else:
                 # For any other errors (e.g. file or directory does not exist), return 404 Not Found
