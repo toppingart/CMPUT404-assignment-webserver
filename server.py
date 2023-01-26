@@ -54,13 +54,13 @@ class MyWebServer(socketserver.BaseRequestHandler):
             
             methodUsed = self.data.split()[0] # e.g. GET
             filePath = self.data.split()[1]
-       
+            
             # is it a GET method?
             if methodUsed.decode().strip() != "GET":
                 raise InvalidMethodError
 
             # add the www directory at the beginning of the file path and open up the file
-            modifiedFilePath = os.path.realpath('./www/' + filePath.decode()) 
+            modifiedFilePath = os.path.realpath('./www' + filePath.decode()) 
 
             # the user has went outside of the www directory
             # /www indicates that the user is in the www directory
@@ -79,6 +79,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
                 modifiedFilePath = os.path.realpath(currentPath + 'index.html') 
                 
+                # open up index.html
                 file = open(modifiedFilePath.encode())
                 result = file.read()
                 file.close()
@@ -90,26 +91,13 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode()+ b"\r\n\r\n")
                 
                 # send the contents of the file (e.g. html file, css file)
-                self.request.sendall(result.encode('utf-8'))
+                self.request.sendall(result.encode())
 
-            elif not filePath.endswith(b"/") and os.path.exists(currentPath + '/index.html'):
+            elif not filePath.endswith(b"/"):
                 
-                modifiedFilePath = os.path.realpath(currentPath + '/index.html') 
-                fileName = os.path.basename(modifiedFilePath)
-                fileExtension = fileName.split('.')[-1]
-
                 # we need to add a / at the end
                 changedFilePath = filePath.decode() + '/'
-                self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ 
-                (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode() + b"\r\n\r\n")
-
-                modifiedFilePath = os.path.realpath(currentPath + '/index.html') 
-                file = open(modifiedFilePath.encode())
-                result = file.read()
-                file.close()
-
-                # send the contents of the file (e.g. html file, css file)
-                self.request.sendall(result.encode('utf-8'))
+                self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode() + b"\r\n\r\n")
 
             # in case of any other issues (e.g. index.html does not exist)
             else: 
@@ -137,7 +125,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode()+ b"\r\n\r\n")
             
             # send the contents of the file (e.g. html file, css file)
-            self.request.sendall(result.encode('utf-8'))
+            self.request.sendall(result.encode())
 
 
 
