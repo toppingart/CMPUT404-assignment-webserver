@@ -28,6 +28,12 @@ import os
 
 # try: curl -v -X GET http://127.0.0.1:8080/
 
+class InvalidMethodError(Exception):
+    pass
+
+class OutsideDirectoryError(Exception):
+    pass
+
 
 class MyWebServer(socketserver.BaseRequestHandler):
     
@@ -49,10 +55,9 @@ class MyWebServer(socketserver.BaseRequestHandler):
             methodUsed = self.data.split()[0] # e.g. GET
             filePath = self.data.split()[1]
        
-
             # is it a GET method?
             if methodUsed.decode().strip() != "GET":
-                raise Exception
+                raise InvalidMethodError
 
             # add the www directory at the beginning of the file path and open up the file
             modifiedFilePath = os.path.realpath('./www/' + filePath.decode()) 
@@ -60,39 +65,45 @@ class MyWebServer(socketserver.BaseRequestHandler):
             # the user has went outside of the www directory
             # /www indicates that the user is in the www directory
             if 'www/' not in modifiedFilePath and '/www' not in modifiedFilePath:
-                raise Exception
+                raise OutsideDirectoryError
 
             file = open(modifiedFilePath.encode()) # may raise an error
             result = file.read()
             file.close()
        
-        except IsADirectoryError as e:
+        except IsADirectoryError:
             # we entered a directory (either with or without /) but did not specify a file, default: use index.html
-     
-            if filePath.endswith(b"/"):
+            currentPath = './www/' + filePath.decode() 
 
-                # open up the appropriate file from the www directory (index.html)
-                modifiedFilePath = os.path.realpath('./www/' + filePath.decode() + 'index.html') 
+            if filePath.endswith(b"/") and os.path.exists(currentPath + 'index.html'):
+
+                modifiedFilePath = os.path.realpath(currentPath + 'index.html') 
+                
                 file = open(modifiedFilePath.encode())
                 result = file.read()
                 file.close()
 
                 # get the extension of the file (e.g. basename --> index.html)
                 fileName = os.path.basename(modifiedFilePath)
-                fileExtension = fileName.split('.')[1]
+                fileExtension = fileName.split('.')[-1]
 
                 self.request.send(b'HTTP/1.1 200 OK' + (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode()+ b"\r\n\r\n")
                 
                 # send the contents of the file (e.g. html file, css file)
                 self.request.sendall(result.encode('utf-8'))
 
-            elif not filePath.endswith(b"/"):
+            elif not filePath.endswith(b"/") and os.path.exists(currentPath + '/index.html'):
                 
+                modifiedFilePath = os.path.realpath(currentPath + '/index.html') 
+                fileName = os.path.basename(modifiedFilePath)
+                fileExtension = fileName.split('.')[-1]
+
                 # we need to add a / at the end
                 changedFilePath = filePath.decode() + '/'
-                self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ b"\r\n\r\n")
+                self.request.send(b'HTTP/1.1 301 Moved Permanently\nLocation: ' + changedFilePath.encode()+ 
+                (f'\nContent-Type: text/{fileExtension}; charset=utf-8').encode() + b"\r\n\r\n")
 
-                modifiedFilePath = os.path.realpath('./www/' + filePath.decode() + '/index.html') 
+                modifiedFilePath = os.path.realpath(currentPath + '/index.html') 
                 file = open(modifiedFilePath.encode())
                 result = file.read()
                 file.close()
@@ -100,20 +111,21 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 # send the contents of the file (e.g. html file, css file)
                 self.request.sendall(result.encode('utf-8'))
 
-            # in case of any other issues (e.g. file not found inside the directory) - return 404 Not Found
+            # in case of any other issues (e.g. index.html does not exist)
             else: 
-                self.request.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
+                self.request.send(b'HTTP/1.1 404 Not Found' + b'\r\n\r\n')
 
-        except Exception as e:
+        except InvalidMethodError:
+            self.request.send(b'HTTP/1.1 405 Method Not Allowed' + b'\r\n\r\n')
 
-            methodUsed = self.data.split()[0] 
-            if methodUsed.decode().strip() != "GET":
-                self.request.send(b'HTTP/1.1 405 Method Not Allowed' + b'\nConnection: close' + b'\r\n\r\n')
+        except OutsideDirectoryError:
+            # For any files outside of the www directory, return 404 not found
+            self.request.send(b'HTTP/1.1 404 Not Found' + b'\r\n\r\n')
 
-            else:
-                # For any other errors (e.g. file or directory does not exist), return 404 Not Found
-                self.request.send(b'HTTP/1.1 404 Not Found\r\n\r\n')
-        
+        except Exception: 
+            # In case of any other errors, return 404 not found
+            self.request.send(b'HTTP/1.1 404 Not Found' + b'\r\n\r\n')
+
         else:
             # get the extension of the file (e.g. basename --> index.html)
             fileName = os.path.basename(modifiedFilePath)
